@@ -1,14 +1,19 @@
 pragma solidity ^0.4.23;
 import './Request.sol';
 
-contract ManagerRequest is Request{
+contract MedicineRequest is Request{
     
-    address public newUser;
-    address[] public approvers;
-    uint public approveCounts;
+    string medicineId;
+    string name;
+    string description;
+    uint value;
+    uint validity;
+    
+    address[] approvers;
+    uint approveCounts;
     
     event ApprovedBy(address approver);
-    event Approved(uint approveCounts);
+    event Approved(string medicineId);
     event NewApprover(address newApprover);
     
     modifier notApproved{
@@ -34,18 +39,42 @@ contract ManagerRequest is Request{
     _;
     }
     
-    constructor(uint _id, address _newUser, address[] _approvers)public{
+    constructor(uint _id, string _medicineId, string _name, string _description, uint _value, uint _validity, address[] _approvers)public{
         
         id = _id;
-        newUser= _newUser;
+        medicineId = _medicineId;
+        name = _name;
+        description = _description;
+        value = _value;
+        validity = _validity;
         approvers = _approvers;
         approveCounts = 0;
         approved = false;
     }
     
-    function getNewUser()public view returns(address){
+    function getMedicineName()public view returns(string){
         
-        return newUser;
+        return name;
+    }
+    
+    function getMedicineDescription()public view returns(string){
+        
+        return description;
+    }
+    
+    function getMedicineValue()public view returns(uint){
+        
+        return value;
+    }
+    
+    function getMedicineValidity()public view returns(uint){
+        
+        return validity;
+    }
+    
+    function getMedicineId()public view returns(string){
+        
+        return medicineId;
     }
     
     function approve()public hasntVoted notApproved onlyAprover returns(bool){
@@ -56,7 +85,7 @@ contract ManagerRequest is Request{
         
         if(approveCounts >= approvers.length / 2){
             approved = true;
-            emit Approved(approveCounts);
+            emit Approved(medicineId);
         }
         
         return approved;

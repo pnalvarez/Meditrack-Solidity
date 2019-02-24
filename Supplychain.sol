@@ -3,6 +3,8 @@ pragma experimental ABIEncoderV2;
 
 import './TransferRequest.sol';
 import './ManagerRequest.sol';
+import './UserRequest.sol';
+import './MedicineRequest.sol';
 
 contract Supplychain{
 
@@ -62,9 +64,11 @@ contract Supplychain{
     mapping(address => Wallet)private wallets;
     mapping(string => Product)private products;
     mapping(string => bool)private productExist;
+    
     string[]public medicineNames;
     string[]public allProducts;
     address[]public allWallets;
+    
     mapping(address => bool)private participates;
     uint public begin;
     mapping(address => Receive[]) receives;
@@ -72,8 +76,12 @@ contract Supplychain{
     mapping(address => bool) isInAlfaCenter;
     mapping(string => Function) stringToFunction;
     mapping(string => bool) productWasDeleted;
+    
     ManagerRequest[] managerRequests;
     TransferRequest[] transferRequests;
+    UserRequest[] userRequests;
+    MedicineRequest[] medicineRequests;
+    
     Sinister[] public allSinisters;
 
     event medicineCreated(string id); 
@@ -314,7 +322,7 @@ contract Supplychain{
       emit DiscardedProduct(uuid, owner, timestamp);
   }
    function medicineCreate(string id, string _name, string _description, uint _value, uint _validity)
-   public onlyManager checkTime{
+   private{
        require(!medicines[id].initialized, "Medicine already exists");
 
        medicines[id] = Medicine(_name, _description, true, _value, _validity);
@@ -323,8 +331,7 @@ contract Supplychain{
        emit medicineCreated(id);
    }
 
-   function createWallet(address adr, string f)public onlyManager
-    inexistantWallet(adr){
+   function createWallet(address adr, string f)private{
 
        wallets[adr] = Wallet(false,now,stringToFunction[f]);
        participates[adr] = true;
@@ -352,15 +359,6 @@ contract Supplychain{
        emit productGenerated(msg.sender,uuid,id);
    }
 
-   function transfer(string uuid, address to)public
-   validProduct(uuid)
-   productOwner(msg.sender, uuid)
-   supplychainRule(msg.sender, to)
-    checkTime{
-
-       transferOperation(msg.sender, uuid, to);
-
-   }
 
    function buyMedicine(address from, string uuid)public payable
    only(Function.Buyer)
@@ -377,6 +375,60 @@ contract Supplychain{
        emit medicineBought(msg.sender, uuid);
 
        return change;
+   }
+   
+   function addNewMedicineRequest(string id, string name, string description, uint value, uint validity)public
+   onlyManager
+   checkTime{
+       require(!medicines[id].initialized, "Medicine already exists");
+       
+       MedicineRequest request = new MedicineRequest(medicineRequests.length, id, name, description, value, validity, managers);
+       medicineRequests.push(request);
+       
+       emit NewRequest();
+   }
+   
+   function approveNewMedicineRequest(uint id)public onlyManager checkTime{
+       
+       require(medicineRequests.length > id, "Request invalid");
+       
+       medicineRequests[id].approve();
+       
+       if(medicineRequests[id].isApproved()){
+           
+           string memory medicineId = medicineRequests[id].getMedicineId();
+           string memory name = medicineRequests[id].getMedicineName();
+           string memory description = medicineRequests[id].getMedicineDescription();
+           uint value = medicineRequests[id].getMedicineValue();
+           uint validity = medicineRequests[id].getMedicineValidity();
+           
+           medicineCreate(medicineId, name, description, value, validity);
+       }
+   }
+   
+   function addNewUserRequest(address adr, string f)public
+   onlyManager
+   inexistantWallet(adr)
+   checkTime{
+       
+       UserRequest request = new UserRequest(userRequests.length, adr, f, managers);
+       userRequests.push(request);
+       
+       emit NewRequest();
+   }
+   
+   function approveNewUserRequest(uint id)public checkTime{
+       require(userRequests.length > id, "Request invalid");
+       
+       userRequests[id].approve();
+       
+       if(userRequests[id].isApproved()){
+           
+           address newUser = userRequests[id].getNewUser();
+           string memory func = userRequests[id].getFunc();
+           
+           createWallet(newUser, func);
+       }
    }
    
    function addNewManagerRequest(address newManager)public
@@ -398,7 +450,7 @@ contract Supplychain{
        
        if(managerRequests[id].isApproved()){
            
-           address newManager = managerRequests[id].getNewManager();
+           address newManager = managerRequests[id].getNewUser();
            managers.push(newManager);
            
            for(uint i = 0; i < managerRequests.length; i++){

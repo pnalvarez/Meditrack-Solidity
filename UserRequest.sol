@@ -1,9 +1,10 @@
 pragma solidity ^0.4.23;
 import './Request.sol';
 
-contract ManagerRequest is Request{
+contract UserRequest is Request{
     
     address public newUser;
+    string func;
     address[] public approvers;
     uint public approveCounts;
     
@@ -34,10 +35,11 @@ contract ManagerRequest is Request{
     _;
     }
     
-    constructor(uint _id, address _newUser, address[] _approvers)public{
+    constructor(uint _id, address _newUser, string f, address[] _approvers)public{
         
         id = _id;
         newUser= _newUser;
+        func = f;
         approvers = _approvers;
         approveCounts = 0;
         approved = false;
@@ -46,6 +48,11 @@ contract ManagerRequest is Request{
     function getNewUser()public view returns(address){
         
         return newUser;
+    }
+    
+    function getFunc()public view returns(string){
+        
+        return func;
     }
     
     function approve()public hasntVoted notApproved onlyAprover returns(bool){
